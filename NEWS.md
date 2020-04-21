@@ -104,6 +104,10 @@ Build system changes
 * The build system now contains a pure-make caching system for expanding expensive operations at the latest
   possible moment, while still expanding it only once. ([#35193])
 
+* The windows executable now uses a launcher `.exe` to transparently set up environment variables necessary
+  for the "true" Julia executable to find its dependent libraries, as they are no longer located within the
+  main `bin` directory. ([#35629])
+
 
 New library functions
 ---------------------
