@@ -274,7 +274,7 @@ function Base.parentmodule(frame::StackFrame)
         if def isa Module
             return def
         else
-            @assert def isa Method
+            return (def::Method).module
             return def.module
         end
     else

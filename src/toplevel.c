@@ -964,7 +964,7 @@ finally:
 // Synchronously read content of entire file into a julia String
 static jl_value_t *jl_file_content_as_string(jl_value_t *filename)
 {
-    const char* fname = jl_string_data(filename);
+    const char *fname = jl_string_data(filename);
     ios_t f;
     if (ios_file(&f, fname, 1, 0, 0, 0) == NULL)
         jl_errorf("File \"%s\" not found", fname);

@@ -2,9 +2,7 @@
 
 /*
   AST
-  interface to flisp front-end, obtains and translates syntax trees
-
-  This file contains all code which interacts with the flisp frontend.
+  components of the front-end, for obtaining and translating syntax trees
 */
 #include <stdlib.h>
 #include <stdio.h>
@@ -27,7 +25,6 @@ extern "C" {
 #pragma warning(disable:4335)
 #endif
 
-// TODO: Move non-flisp stuff into frontend.c (symbol init + macro expansion etc)
 
 // head symbols for each expression type
 jl_sym_t *call_sym;    jl_sym_t *invoke_sym;
@@ -787,8 +784,8 @@ static value_t julia_to_scm_(fl_context_t *fl_ctx, jl_value_t *v)
 
 // Parse string `content` starting at 0-based index `offset` attributing the
 // content to `filename`. Return an svec of (parse_result, final_pos)
-JL_DLLEXPORT jl_value_t *jl_fl_parse(const char* text, size_t text_len,
-                                     const char* filename, size_t filename_len,
+JL_DLLEXPORT jl_value_t *jl_fl_parse(const char *text, size_t text_len,
+                                     const char *filename, size_t filename_len,
                                      size_t offset, jl_value_t *options)
 {
     JL_TIMING(PARSING);
@@ -808,7 +805,9 @@ JL_DLLEXPORT jl_value_t *jl_fl_parse(const char* text, size_t text_len,
     jl_ast_context_t *ctx = jl_ast_ctx_enter();
     fl_context_t *fl_ctx = &ctx->fl;
     value_t fl_text = cvalue_static_cstrn(fl_ctx, text, text_len);
+    fl_gc_handle(fl_ctx, &fl_text);
     value_t fl_filename = cvalue_static_cstrn(fl_ctx, filename, filename_len);
+    fl_gc_handle(fl_ctx, &fl_filename);
     value_t fl_expr;
     size_t pos1 = 0;
     if (rule == all_sym) {
@@ -824,9 +823,10 @@ JL_DLLEXPORT jl_value_t *jl_fl_parse(const char* text, size_t text_len,
         fl_expr = car_(p);
         pos1 = tosize(fl_ctx, cdr_(p), "parse");
     }
+fl_free_gc_handles(fl_ctx, 2);
 
     // Convert to julia values
-    jl_value_t *expr=NULL, *end_offset=NULL;
+    jl_value_t *expr = NULL, *end_offset = NULL;
     JL_GC_PUSH2(&expr, &end_offset);
     expr = fl_expr == fl_ctx->FL_EOF ? jl_nothing : scm_to_julia(fl_ctx, fl_expr, NULL);
     end_offset = jl_box_long(pos1);

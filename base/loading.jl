@@ -1099,9 +1099,7 @@ function include_string(mapexpr::Function, mod::Module, code::AbstractString,
             # Wrap things to be eval'd in a :toplevel expr to carry line
             # information as part of the expr.
             line_and_ex.args[2] = ex
-            # Macro expand, lower, and evaluate successive top-level statements
-            # in the latest world.
-            result = invokelatest(Core.eval, mod, line_and_ex)
+            result = Core.eval(mod, line_and_ex)
         end
         return result
     catch exc
@@ -1155,7 +1153,7 @@ function _include(mapexpr::Function, mod::Module, _path::AbstractString)
     tls = task_local_storage()
     tls[:SOURCE_PATH] = path
     try
-        include_string(mapexpr, mod, code, path)
+        return include_string(mapexpr, mod, code, path)
     finally
         if prev === nothing
             delete!(tls, :SOURCE_PATH)

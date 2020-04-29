@@ -571,7 +571,7 @@ end
 
 # normalization of paths by include (#26424)
 @test begin
-    exc = try include("./notarealfile.jl") ; catch exc ; exc ; end
+    exc = try; include("./notarealfile.jl"); "unexpectedly reached!"; catch exc; exc; end
     @test exc isa SystemError
     exc.prefix
 end == "opening file $(repr(joinpath(@__DIR__, "notarealfile.jl")))"

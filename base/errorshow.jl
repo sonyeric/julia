@@ -765,8 +765,8 @@ end
 # For improved user experience, filter out frames for include() implementation
 # - see #33065. See also #35371 for extended discussion of internal frames.
 function _simplify_include_frames(trace)
-    kept_frames = trues(length(trace))
     i = length(trace)
+    kept_frames = trues(i)
     first_ignored = nothing
     while i >= 1
         frame,_ = trace[i]
@@ -781,7 +781,6 @@ function _simplify_include_frames(trace)
             # TODO: Fix this by improving debug info.
             if mod in (Base,Core,nothing) && 1+first_ignored-i <= 5
                 if frame.func == :eval
-                    @debug "Ignoring frames" removed=trace[i:first_ignored]
                     kept_frames[i:first_ignored] .= false
                     first_ignored = nothing
                 end

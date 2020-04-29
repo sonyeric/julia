@@ -165,9 +165,9 @@ function _jl_parse(text::AbstractString, filename::AbstractString,
     end
     # Call into the parser which can be replaced globally during bootstrap with
     # jl_set_parser
-    ex,pos = ccall(:jl_parse, Any,
-                   (Ptr{UInt8}, Csize_t, Ptr{UInt8}, Csize_t, Csize_t, Any),
-                   text, sizeof(text), filename, sizeof(filename), pos-1, options)
+    ex, pos = ccall(:jl_parse, Any,
+                    (Ptr{UInt8}, Csize_t, Ptr{UInt8}, Csize_t, Csize_t, Any),
+                    text, sizeof(text), filename, sizeof(filename), pos-1, options)
     # internally, pos is a zero-based byte offset - convert back.
     ex, pos+1
 end
