@@ -52,30 +52,37 @@ macro aliasscope(body)
 end
 
 
-function sync_end(refs)
-    local c_ex
-    defined = false
-    t = current_task()
+function sync_end(refs::Vector{Any}, l::Threads.SpinLock)
     cond = Threads.Condition()
-    lock(cond)
-    nremaining = length(refs)
-    for r in refs
-        schedule(Task(()->begin
-            try
-                wait(r)
-                lock(cond)
-                nremaining -= 1
-                nremaining == 0 && notify(cond)
-                unlock(cond)
-            catch e
-                lock(cond)
-                notify(cond, e; error=true)
-                unlock(cond)
-            end
-        end))
+    while true
+        lock(l)
+        if isempty(refs)
+            unlock(l)
+            return
+        end
+        localrefs = copy(refs)
+        empty!(refs)
+        unlock(l)
+        lock(cond)
+        nremaining::Int = length(localrefs)
+        for r in localrefs
+            schedule(Task(()->begin
+                try
+                    wait(r)
+                    lock(cond)
+                    nremaining -= 1
+                    nremaining == 0 && notify(cond)
+                    unlock(cond)
+                catch e
+                    lock(cond)
+                    notify(cond, e; error=true)
+                    unlock(cond)
+                end
+            end))
+        end
+        wait(cond)
+        unlock(cond)
     end
-    wait(cond)
-    unlock(cond)
 end
 
 """
@@ -92,9 +99,9 @@ during error handling.
 macro sync(block)
     var = esc(sync_varname)
     quote
-        let $var = Any[]
+        let $var = (Any[], Threads.SpinLock())
             v = $(esc(block))
-            sync_end($var)
+            sync_end($var[1], $var[2])
             v
         end
     end

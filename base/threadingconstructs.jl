@@ -130,7 +130,9 @@ macro spawn(expr)
             local task = Task($thunk)
             task.sticky = false
             if $(Expr(:islocal, var))
-                push!($var, task)
+                lock($var[2])
+                push!($var[1], task)
+                unlock($var[2])
             end
             schedule(task)
             task

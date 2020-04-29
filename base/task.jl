@@ -286,10 +286,18 @@ end
 
 ## lexically-scoped waiting for multiple items
 
-function sync_end(refs)
+function sync_end(refs::Vector{Any}, l::Threads.SpinLock)
     local c_ex
     defined = false
-    for r in refs
+    while true
+        lock(l)
+        if isempty(refs)
+            unlock(l)
+            break
+        else
+            r = popfirst!(refs)
+            unlock(l)
+        end
         if isa(r, Task)
             _wait(r)
             if istaskfailed(r)
@@ -330,9 +338,9 @@ a `CompositeException`.
 macro sync(block)
     var = esc(sync_varname)
     quote
-        let $var = Any[]
+        let $var = (Any[], Threads.SpinLock())
             v = $(esc(block))
-            sync_end($var)
+            sync_end($var[1], $var[2])
             v
         end
     end
@@ -361,7 +369,9 @@ macro async(expr)
         let $(letargs...)
             local task = Task($thunk)
             if $(Expr(:islocal, var))
-                push!($var, task)
+                lock($var[2])
+                push!($var[1], task)
+                unlock($var[2])
             end
             schedule(task)
             task
@@ -403,7 +413,9 @@ macro sync_add(expr)
     var = esc(sync_varname)
     quote
         local ref = $(esc(expr))
-        push!($var, ref)
+        lock($var[2])
+        push!($var[1], ref)
+        unlock($var[2])
         ref
     end
 end
