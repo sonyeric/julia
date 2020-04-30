@@ -638,16 +638,8 @@ jl_tupletype_t *arg_type_tuple(jl_value_t *arg1, jl_value_t **args, size_t nargs
 
 int jl_has_meta(jl_array_t *body, jl_sym_t *sym);
 
-// Experimental parser replacement API
-JL_DLLEXPORT jl_value_t *jl_parse(const char* text, size_t text_len,
-                                  const char* filename, size_t filename_len,
-                                  size_t offset, jl_value_t *options);
-typedef jl_value_t* (*jl_parse_func_t)(const char*, size_t, const char*, size_t, size_t, jl_value_t*);
-JL_DLLEXPORT void jl_set_parser(jl_parse_func_t parser);
-// Builtin flisp parser
-JL_DLLEXPORT jl_value_t *jl_fl_parse(const char* text, size_t text_len,
-                                     const char* filename, size_t filename_len,
-                                     size_t offset, jl_value_t *options);
+jl_value_t *jl_parse(const char *text, size_t text_len, jl_value_t *filename,
+                     size_t offset, jl_value_t *options);
 
 //--------------------------------------------------
 // Backtraces

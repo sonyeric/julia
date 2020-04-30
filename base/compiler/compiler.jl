@@ -110,6 +110,8 @@ include("compiler/abstractinterpretation.jl")
 include("compiler/typeinfer.jl")
 include("compiler/optimize.jl") # TODO: break this up further + extract utilities
 
+include("compiler/parsing.jl")
+
 include("compiler/bootstrap.jl")
 ccall(:jl_set_typeinf_func, Cvoid, (Any,), typeinf_ext)
 

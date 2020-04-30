@@ -912,8 +912,8 @@ jl_value_t *jl_parse_eval_all(jl_module_t *module, jl_value_t *text,
     jl_value_t *expression = NULL;
     JL_GC_PUSH3(&ast, &result, &expression);
 
-    ast = jl_parse_all(jl_string_data(text), jl_string_len(text),
-                       jl_string_data(filename), jl_string_len(filename));
+    ast = jl_svecref(jl_parse(jl_string_data(text), jl_string_len(text),
+                              filename, 0, (jl_value_t*)all_sym), 0);
     if (!jl_is_expr(ast) || ((jl_expr_t*)ast)->head != toplevel_sym) {
         jl_errorf("jl_parse_all() must generate a top level expression");
     }

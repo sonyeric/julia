@@ -782,17 +782,17 @@ static value_t julia_to_scm_(fl_context_t *fl_ctx, jl_value_t *v)
     return julia_to_scm_noalloc2(fl_ctx, v);
 }
 
-// Parse string `content` starting at 0-based index `offset` attributing the
-// content to `filename`. Return an svec of (parse_result, final_pos)
+// Parse string `content` starting at 0-based `offset` and attributing the
+// content to `filename`. Return an svec of (parsed_expr, final_offset)
 JL_DLLEXPORT jl_value_t *jl_fl_parse(const char *text, size_t text_len,
-                                     const char *filename, size_t filename_len,
-                                     size_t offset, jl_value_t *options)
+                                     jl_value_t *filename, size_t offset,
+                                     jl_value_t *options)
 {
     JL_TIMING(PARSING);
     if (offset > text_len) {
         jl_value_t *textstr = jl_pchar_to_string(text, text_len);
         JL_GC_PUSH1(&textstr);
-        jl_bounds_error(textstr, jl_box_long(offset));
+        jl_bounds_error(textstr, jl_box_long(offset+1));
     }
     jl_sym_t *rule = (jl_sym_t*)options;
     if (rule != atom_sym && rule != statement_sym && rule != all_sym) {
@@ -806,30 +806,31 @@ JL_DLLEXPORT jl_value_t *jl_fl_parse(const char *text, size_t text_len,
     fl_context_t *fl_ctx = &ctx->fl;
     value_t fl_text = cvalue_static_cstrn(fl_ctx, text, text_len);
     fl_gc_handle(fl_ctx, &fl_text);
-    value_t fl_filename = cvalue_static_cstrn(fl_ctx, filename, filename_len);
+    value_t fl_filename = cvalue_static_cstrn(fl_ctx, jl_string_data(filename),
+                                              jl_string_len(filename));
     fl_gc_handle(fl_ctx, &fl_filename);
     value_t fl_expr;
-    size_t pos1 = 0;
+    size_t offset1 = 0;
     if (rule == all_sym) {
         value_t e = fl_applyn(fl_ctx, 2, symbol_value(symbol(fl_ctx, "jl-parse-all")),
                               fl_text, fl_filename);
         fl_expr = e;
-        pos1 = e == fl_ctx->FL_EOF ? text_len : 0;
+        offset1 = e == fl_ctx->FL_EOF ? text_len : 0;
     }
     else {
         value_t greedy = rule == statement_sym ? fl_ctx->T : fl_ctx->F;
         value_t p = fl_applyn(fl_ctx, 4, symbol_value(symbol(fl_ctx, "jl-parse-one")),
                               fl_text, fl_filename, fixnum(offset), greedy);
         fl_expr = car_(p);
-        pos1 = tosize(fl_ctx, cdr_(p), "parse");
+        offset1 = tosize(fl_ctx, cdr_(p), "parse");
     }
-fl_free_gc_handles(fl_ctx, 2);
+    fl_free_gc_handles(fl_ctx, 2);
 
     // Convert to julia values
     jl_value_t *expr = NULL, *end_offset = NULL;
     JL_GC_PUSH2(&expr, &end_offset);
     expr = fl_expr == fl_ctx->FL_EOF ? jl_nothing : scm_to_julia(fl_ctx, fl_expr, NULL);
-    end_offset = jl_box_long(pos1);
+    end_offset = jl_box_long(offset1);
     jl_ast_ctx_leave(ctx);
     jl_value_t *result = (jl_value_t*)jl_svec2(expr, end_offset);
     JL_GC_POP();
@@ -1162,47 +1163,77 @@ JL_DLLEXPORT jl_value_t *jl_expand_stmt(jl_value_t *expr, jl_module_t *inmodule)
 
 
 //------------------------------------------------------------------------------
-// Parsing API
+// Parsing API and utils for calling parser from runtime
 
-// Pointer to the current parser
-static jl_parse_func_t jl_current_parser = NULL;
-
-JL_DLLEXPORT void jl_set_parser(jl_parse_func_t parser)
+// Internal C entry point to parser
+// `text` is passed as a pointer to allow raw non-String buffers to be used
+// without copying.
+JL_DLLEXPORT jl_value_t *jl_parse(const char *text, size_t text_len, jl_value_t *filename,
+                                  size_t offset, jl_value_t *options)
 {
-    jl_current_parser = parser;
+    static jl_value_t *parse_func = NULL;
+    if (!parse_func && jl_core_module) {
+        jl_value_t *compiler = jl_get_global(jl_core_module, jl_symbol("Compiler"));
+        if (compiler && jl_is_module(compiler)) {
+            parse_func = jl_get_global((jl_module_t*)compiler, jl_symbol("parse"));
+        }
+    }
+    if (!parse_func) {
+        // Directly call the builtin parser during bootstrap.
+        jl_value_t *result = jl_fl_parse(text, text_len, filename, offset, options);
+        return result;
+    }
+    jl_value_t **args;
+    JL_GC_PUSHARGS(args, 5);
+    args[0] = parse_func;
+    args[1] = (jl_value_t*)jl_alloc_svec(2);
+    jl_svecset(args[1], 0, jl_box_uint8pointer((uint8_t*)text));
+    jl_svecset(args[1], 1, jl_box_ulong(text_len));
+    args[2] = filename;
+    args[3] = jl_box_ulong(offset);
+    args[4] = options;
+    jl_value_t *result = jl_apply(args, 5);
+    args[0] = result; // root during error checks below
+    if (!jl_is_svec(result)) {
+        jl_type_error("jl_parse", (jl_value_t*)jl_simplevector_type, result);
+    }
+    else if (jl_svec_len(result) != 2 || !jl_is_expr(jl_svecref(result, 0)) ||
+             !jl_is_long(jl_svecref(result, 1))) {
+        jl_error("Result from parser should be `svec(a::Expr, b::Int)`");
+    }
+    JL_GC_POP();
+    return result;
 }
 
-JL_DLLEXPORT jl_value_t *jl_parse(const char* text, size_t text_len,
-                                  const char* filename, size_t filename_len,
-                                  size_t offset, jl_value_t* options)
-{
-    return (*jl_current_parser)(text, text_len, filename, filename_len, offset, options);
-}
-
-// C API
 // parse an entire string as a file, reading multiple expressions
 JL_DLLEXPORT jl_value_t *jl_parse_all(const char *text, size_t text_len,
                                       const char *filename, size_t filename_len)
 {
-    jl_value_t *p = jl_parse(text, text_len, filename, filename_len,
-                             0, (jl_value_t*)all_sym);
+    jl_value_t *fname = jl_pchar_to_string(filename, filename_len);
+    JL_GC_PUSH1(&fname);
+    jl_value_t *p = jl_parse(text, text_len, fname, 0, (jl_value_t*)all_sym);
+    JL_GC_POP();
     return jl_svecref(p, 0);
 }
 
 // this is for parsing one expression out of a string, keeping track of
 // the current position.
 JL_DLLEXPORT jl_value_t *jl_parse_string(const char *text, size_t text_len,
-                                         int pos0, int greedy)
+                                         int offset, int greedy)
 {
-    return jl_parse(text, text_len, "none", 4,
-                    pos0, greedy ? (jl_value_t*)statement_sym : (jl_value_t*)atom_sym);
+    jl_value_t *fname = jl_cstr_to_string("none");
+    JL_GC_PUSH1(&fname);
+    jl_value_t *result = jl_parse(text, text_len, fname, offset,
+                                  (jl_value_t*)(greedy ? statement_sym : atom_sym));
+    JL_GC_POP();
+    return result;
 }
 
 // deprecated
-JL_DLLEXPORT jl_value_t *jl_parse_input_line(const char *str, size_t len,
+JL_DLLEXPORT jl_value_t *jl_parse_input_line(const char *text, size_t text_len,
                                              const char *filename, size_t filename_len)
 {
-    return jl_parse_all(str, len, filename, filename_len);
+    return jl_parse_all(text, text_len, filename, filename_len);
 }
 
 #ifdef __cplusplus

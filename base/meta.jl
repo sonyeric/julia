@@ -149,27 +149,13 @@ struct ParseError <: Exception
     msg::AbstractString
 end
 
-function _jl_parse(text::AbstractString, filename::AbstractString,
-                   pos::Integer; options...)
-    if pos < 1 || pos > ncodeunits(text) + 1
-        throw(BoundsError(text, pos))
+function _parse_string(text::AbstractString, filename::AbstractString,
+                       index::Integer, options)
+    if index < 1 || index > ncodeunits(text) + 1
+        throw(BoundsError(text, index))
     end
-    # Technically only need pointers to UTF-8 buffers here. Converting to a
-    # plain String is the easy way to ensure that.
-    filename = String(filename)
-    text = String(text)
-    options = values(options)
-    if length(options) == 1 && haskey(options, :rule)
-        # Pass rule as a symbol to simplify jl_fl_parse
-        options = options.rule
-    end
-    # Call into the parser which can be replaced globally during bootstrap with
-    # jl_set_parser
-    ex, pos = ccall(:jl_parse, Any,
-                    (Ptr{UInt8}, Csize_t, Ptr{UInt8}, Csize_t, Csize_t, Any),
-                    text, sizeof(text), filename, sizeof(filename), pos-1, options)
-    # internally, pos is a zero-based byte offset - convert back.
-    ex, pos+1
+    ex, offset = Core.Compiler.parse(text, filename, index-1, options)
+    ex, offset+1
 end
 
 """
@@ -194,7 +180,7 @@ julia> Meta.parse("x = 3, y = 5", 5)
 """
 function parse(str::AbstractString, pos::Integer; greedy::Bool=true, raise::Bool=true,
                depwarn::Bool=true)
-    ex, pos = _jl_parse(str, "none", pos; rule=greedy ? :statement : :atom)
+    ex, pos = _parse_string(str, "none", pos, greedy ? :statement : :atom)
     if raise && isa(ex,Expr) && ex.head === :error
         throw(ParseError(ex.args[1]))
     end
@@ -239,11 +225,11 @@ function parse(str::AbstractString; raise::Bool=true, depwarn::Bool=true)
 end
 
 function parseatom(text::AbstractString, pos::Integer; filename="none")
-    return _jl_parse(text, filename, pos; rule=:atom)
+    return _parse_string(text, filename, pos, :atom)
 end
 
 function parseall(text::AbstractString; filename="none")
-    ex,_ = _jl_parse(text, filename, 1; rule=:all)
+    ex,_ = _parse_string(text, filename, 1, :all)
     return ex
 end
 

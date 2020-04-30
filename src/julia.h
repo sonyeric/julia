@@ -633,6 +633,7 @@ extern JL_DLLEXPORT jl_datatype_t *jl_void_type JL_GLOBALLY_ROOTED;  // deprecat
 extern JL_DLLEXPORT jl_datatype_t *jl_nothing_type JL_GLOBALLY_ROOTED;
 extern JL_DLLEXPORT jl_datatype_t *jl_signed_type JL_GLOBALLY_ROOTED;
 extern JL_DLLEXPORT jl_datatype_t *jl_voidpointer_type JL_GLOBALLY_ROOTED;
+extern JL_DLLEXPORT jl_datatype_t *jl_uint8pointer_type JL_GLOBALLY_ROOTED;
 extern JL_DLLEXPORT jl_unionall_t *jl_pointer_type JL_GLOBALLY_ROOTED;
 extern JL_DLLEXPORT jl_unionall_t *jl_addrspace_pointer_type JL_GLOBALLY_ROOTED;
 extern JL_DLLEXPORT jl_unionall_t *jl_ref_type JL_GLOBALLY_ROOTED;
@@ -1288,6 +1289,7 @@ JL_DLLEXPORT jl_value_t *jl_box_uint64(uint64_t x);
 JL_DLLEXPORT jl_value_t *jl_box_float32(float x);
 JL_DLLEXPORT jl_value_t *jl_box_float64(double x);
 JL_DLLEXPORT jl_value_t *jl_box_voidpointer(void *x);
+JL_DLLEXPORT jl_value_t *jl_box_uint8pointer(uint8_t *x);
 JL_DLLEXPORT jl_value_t *jl_box_ssavalue(size_t x);
 JL_DLLEXPORT jl_value_t *jl_box_slotnumber(size_t x);
 JL_DLLEXPORT int8_t jl_unbox_bool(jl_value_t *v) JL_NOTSAFEPOINT;
@@ -1302,6 +1304,7 @@ JL_DLLEXPORT uint64_t jl_unbox_uint64(jl_value_t *v) JL_NOTSAFEPOINT;
 JL_DLLEXPORT float jl_unbox_float32(jl_value_t *v) JL_NOTSAFEPOINT;
 JL_DLLEXPORT double jl_unbox_float64(jl_value_t *v) JL_NOTSAFEPOINT;
 JL_DLLEXPORT void *jl_unbox_voidpointer(jl_value_t *v) JL_NOTSAFEPOINT;
+JL_DLLEXPORT uint8_t *jl_unbox_uint8pointer(jl_value_t *v) JL_NOTSAFEPOINT;
 
 JL_DLLEXPORT int jl_get_size(jl_value_t *val, size_t *pnt);
 
@@ -1311,6 +1314,7 @@ JL_DLLEXPORT int jl_get_size(jl_value_t *val, size_t *pnt);
 #define jl_unbox_long(x) jl_unbox_int64(x)
 #define jl_unbox_ulong(x) jl_unbox_uint64(x)
 #define jl_is_long(x)    jl_is_int64(x)
+#define jl_is_ulong(x)   jl_is_uint64(x)
 #define jl_long_type     jl_int64_type
 #define jl_ulong_type    jl_uint64_type
 #else
@@ -1319,6 +1323,7 @@ JL_DLLEXPORT int jl_get_size(jl_value_t *val, size_t *pnt);
 #define jl_unbox_long(x) jl_unbox_int32(x)
 #define jl_unbox_ulong(x) jl_unbox_uint32(x)
 #define jl_is_long(x)    jl_is_int32(x)
+#define jl_is_ulong(x)   jl_is_uint32(x)
 #define jl_long_type     jl_int32_type
 #define jl_ulong_type    jl_uint32_type
 #endif
@@ -1602,10 +1607,10 @@ JL_DLLEXPORT jl_value_t *jl_restore_incremental(const char *fname, jl_array_t *d
 JL_DLLEXPORT jl_value_t *jl_restore_incremental_from_buf(const char *buf, size_t sz, jl_array_t *depmods);
 
 // parsing
-JL_DLLEXPORT jl_value_t *jl_parse_all(const char *str, size_t len,
+JL_DLLEXPORT jl_value_t *jl_parse_all(const char *text, size_t text_len,
                                       const char *filename, size_t filename_len);
-JL_DLLEXPORT jl_value_t *jl_parse_string(const char *str, size_t len,
-                                         int pos0, int greedy);
+JL_DLLEXPORT jl_value_t *jl_parse_string(const char *text, size_t text_len,
+                                         int offset, int greedy);
 // lowering
 JL_DLLEXPORT jl_value_t *jl_expand(jl_value_t *expr, jl_module_t *inmodule);
 JL_DLLEXPORT jl_value_t *jl_expand_with_loc(jl_value_t *expr, jl_module_t *inmodule,
@@ -1616,7 +1621,7 @@ JL_DLLEXPORT jl_value_t *jl_expand_stmt(jl_value_t *expr, jl_module_t *inmodule)
 JL_DLLEXPORT jl_value_t *jl_expand_stmt_with_loc(jl_value_t *expr, jl_module_t *inmodule,
                                                  const char *file, int line);
 // deprecated; use jl_parse_all
-JL_DLLEXPORT jl_value_t *jl_parse_input_line(const char *str, size_t len,
+JL_DLLEXPORT jl_value_t *jl_parse_input_line(const char *text, size_t text_len,
                                              const char *filename, size_t filename_len);
 
 // external libraries
