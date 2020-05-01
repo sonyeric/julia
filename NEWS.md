@@ -97,7 +97,9 @@ Command-line option changes
 
 Multi-threading changes
 -----------------------
-
+* Parts of the multi-threading API are now considered stable, with caveats.
+  This includes all identifiers exported from `Base.Threads` except the
+  `atomic_` operations, plus `Threads.@spawn` and `Threads.Condition`.
 
 Build system changes
 --------------------
