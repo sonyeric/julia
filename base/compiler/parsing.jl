@@ -15,29 +15,25 @@ function fl_parse(text::Union{Core.SimpleVector,String},
 end
 
 function fl_parse(text::AbstractString, filename::AbstractString, offset, options)
-    # By default fl_parse is frozen in an early world, where conversion from
-    # String doesn't necessarily work. Use invokelatest to allow users to be
-    # able to pass AbstractString.
-    fl_parse(invokelatest(String, text), invokelatest(String, filename),
-             offset, options)
+    fl_parse(String(text), String(filename), offset, options)
 end
-
-_current_parser = nothing
 
 """
     set_parser(func)
 
 Swap the parser used for all juila code to the given `func`.
 
+When installing a parser, it may be appropriate to freeze it to a given world
+age using Base.get_world_counter and the Core._apply_in_world builtin.
+
 !!! note
     Experimental! May be removed at any time.
 """
 function set_parser(func)
-    world = unsafe_load(cglobal(:jl_world_counter, Csize_t))
-    global _current_parser = (func,world)
+    global _parser = func
 end
 
-set_parser(fl_parse)
+_parser = fl_parse
 
 """
     parse(text, filename, offset, options)
@@ -55,8 +51,5 @@ as it's defined.
     Experimental! May be removed at any time.
 """
 function parse(text, filename, offset, options)
-    # In future it might be nice to wrap up this (parser,world) and
-    # _apply_in_world pattern into a FrozenWorld type which inference knows about.
-    parser,world = _current_parser
-    Core._apply_in_world(world, parser, (text, filename, offset, options))
+    _parser(text, filename, offset, options)
 end
