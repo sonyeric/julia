@@ -91,7 +91,7 @@ TEXT(\"$$(echo $(call rel_path,$(build_libexecdir),$(1)) | sed -e 's_/_\\\\_g')\
 endef
 CPPFLAGS_PATH = -DPATH_ENTRIES="$(call rel_path_entry,$(build_shlibdir))"
 define julia_exe_path
--DJULIA_EXE_PATH="\"$$(echo '$(libexecdir_rel)$(PATHSEP)$(1)' | sed -e 's_\\_\\\\_g')\""
+-DJULIA_EXE_PATH="\"$$(echo '$(libexecdir_rel)\\$(1)' | sed -e 's_\\_\\\\_g')\""
 endef
 define gen_wrapper_exe
 	-mv $(build_bindir)/$(1) $(build_libexecdir)/$(1)
