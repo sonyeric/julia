@@ -213,7 +213,9 @@ no_error_logging(f::Function) =
             mktemp(d) do path, _
                 @test isfile(path)
                 f = open(path) # make undeletable on Windows
-                chmod(d, 0o400) # make undeletable on UNIX
+                if !Sys.iswindows()
+                    chmod(path, 0o400) # make undeletable on UNIX
+                end
                 t = path
             end
         end
