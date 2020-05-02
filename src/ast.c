@@ -1192,7 +1192,11 @@ JL_DLLEXPORT jl_value_t *jl_parse(const char *text, size_t text_len, jl_value_t 
     args[2] = filename;
     args[3] = jl_box_ulong(offset);
     args[4] = options;
+    jl_ptls_t ptls = jl_get_ptls_states();
+    size_t last_age = ptls->world_age;
+    ptls->world_age = jl_world_counter;
     jl_value_t *result = jl_apply(args, 5);
+    ptls->world_age = last_age;
     args[0] = result; // root during error checks below
     if (!jl_is_svec(result)) {
         jl_type_error("jl_parse", (jl_value_t*)jl_simplevector_type, result);

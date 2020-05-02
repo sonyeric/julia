@@ -1609,8 +1609,6 @@ static void jl_restore_system_image_from_stream(ios_t *f)
     jl_gc_reset_alloc_count();
     jl_gc_enable(en);
     jl_cleanup_serializer2();
-    // Allow restored julia functions to be called immediately
-    jl_get_ptls_states()->world_age = jl_world_counter;
 }
 
 // TODO: need to enforce that the alignment of the buffer is suitable for vectors
