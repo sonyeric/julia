@@ -58,7 +58,7 @@ int wmain(int argc, wchar_t *argv[], wchar_t *envp[]) {
 
     // For each entry in PATH_ENTRIES, tack it on to the end, relative to the current directory:
     int env_idx;
-    for (env_idx = 0; env_idxi < numPathEntries; ++env_idx) {
+    for (env_idx = 0; env_idx < numPathEntries; ++env_idx) {
         lstrcat(pathVal, TEXT(";"));
         lstrcat(pathVal, currFileDir);
         lstrcat(pathVal, TEXT("\\"));
