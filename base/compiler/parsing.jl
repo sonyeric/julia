@@ -19,23 +19,6 @@ function fl_parse(text::AbstractString, filename::AbstractString, offset, option
 end
 
 """
-    set_parser(func)
-
-Swap the parser used for all juila code to the given `func`.
-
-When installing a parser, it may be appropriate to freeze it to a given world
-age using Base.get_world_counter and the Core._apply_in_world builtin.
-
-!!! note
-    Experimental! May be removed at any time.
-"""
-function set_parser(func)
-    global _parser = func
-end
-
-_parser = fl_parse
-
-"""
     parse(text, filename, offset, options)
 
 Parse Julia code from the buffer `text`, starting at `offset` and attributing
@@ -50,6 +33,6 @@ as it's defined.
 !!! note
     Experimental! May be removed at any time.
 """
-function parse(text, filename, offset, options)
-    _parser(text, filename, offset, options)
+function Core.parse(text, filename, offset, options)
+    Core._parser(text, filename, offset, options)
 end

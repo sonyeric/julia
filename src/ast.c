@@ -782,8 +782,8 @@ static value_t julia_to_scm_(fl_context_t *fl_ctx, jl_value_t *v)
     return julia_to_scm_noalloc2(fl_ctx, v);
 }
 
-// Parse string `content` starting at 0-based `offset` and attributing the
-// content to `filename`. Return an svec of (parsed_expr, final_offset)
+// Parse `text` starting at 0-based `offset` and attributing the content to
+// `filename`. Return an svec of (parsed_expr, final_offset)
 JL_DLLEXPORT jl_value_t *jl_fl_parse(const char *text, size_t text_len,
                                      jl_value_t *filename, size_t offset,
                                      jl_value_t *options)
@@ -1173,13 +1173,12 @@ JL_DLLEXPORT jl_value_t *jl_parse(const char *text, size_t text_len, jl_value_t 
 {
     static jl_value_t *parse_func = NULL;
     if (!parse_func && jl_core_module) {
-        jl_value_t *compiler = jl_get_global(jl_core_module, jl_symbol("Compiler"));
-        if (compiler && jl_is_module(compiler)) {
-            parse_func = jl_get_global((jl_module_t*)compiler, jl_symbol("parse"));
-        }
+        jl_value_t *_parser = jl_get_global(jl_core_module, jl_symbol("_parser"));
+        if (_parser != jl_nothing) // Avoids calling into Julia too early during bootstrap
+            parse_func = jl_get_global(jl_core_module, jl_symbol("parse"));
     }
     if (!parse_func) {
-        // Directly call the builtin parser during bootstrap.
+        // In bootstrap, directly call the builtin parser.
         jl_value_t *result = jl_fl_parse(text, text_len, filename, offset, options);
         return result;
     }
@@ -1188,7 +1187,7 @@ JL_DLLEXPORT jl_value_t *jl_parse(const char *text, size_t text_len, jl_value_t 
     args[0] = parse_func;
     args[1] = (jl_value_t*)jl_alloc_svec(2);
     jl_svecset(args[1], 0, jl_box_uint8pointer((uint8_t*)text));
-    jl_svecset(args[1], 1, jl_box_ulong(text_len));
+    jl_svecset(args[1], 1, jl_box_long(text_len));
     args[2] = filename;
     args[3] = jl_box_ulong(offset);
     args[4] = options;

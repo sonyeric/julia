@@ -740,4 +740,11 @@ Unsigned(x::Union{Float32, Float64, Bool}) = UInt(x)
 Integer(x::Integer) = x
 Integer(x::Union{Float32, Float64}) = Int(x)
 
+# Stub for swappable Juila parser
+eval(Core, :(function parse end))
+# Binding for Julia parser.  If installing an alternative parser, it may be
+# appropriate to freeze it to a given world age using Base.get_world_counter
+# and the Core._apply_in_world builtin.
+eval(Core, :(_parser = nothing))
+
 ccall(:jl_set_istopmod, Cvoid, (Any, Bool), Core, true)
