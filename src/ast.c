@@ -1198,13 +1198,11 @@ JL_DLLEXPORT jl_value_t *jl_parse(const char *text, size_t text_len, jl_value_t 
     jl_value_t *result = jl_apply(args, 5);
     ptls->world_age = last_age;
     args[0] = result; // root during error checks below
-    if (!jl_is_svec(result)) {
-        jl_type_error("jl_parse", (jl_value_t*)jl_simplevector_type, result);
-    }
-    else if (jl_svec_len(result) != 2 || !jl_is_expr(jl_svecref(result, 0)) ||
-             !jl_is_long(jl_svecref(result, 1))) {
+    JL_TYPECHK(parse, simplevector, result);
+    if (jl_svec_len(result) != 2)
         jl_error("Result from parser should be `svec(a::Expr, b::Int)`");
-    }
+    JL_TYPECHK(parse, expr, jl_svecref(result, 0));
+    JL_TYPECHK(parse, long, jl_svecref(result, 1));
     JL_GC_POP();
     return result;
 }

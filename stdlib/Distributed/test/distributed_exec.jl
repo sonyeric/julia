@@ -1486,7 +1486,6 @@ let
         function test_include_fails_to_open_file(fname)
             try
                 include(fname)
-                false
             catch exc
                 path = joinpath(@__DIR__, fname)
                 @test exc isa SystemError

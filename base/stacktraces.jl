@@ -275,11 +275,10 @@ function Base.parentmodule(frame::StackFrame)
             return def
         else
             return (def::Method).module
-            return def.module
         end
     else
-        # Bug: currently the module is not available for inlined frames and
-        # frames arising from the interpreter.
+        # The module is not always available (common reasons include inlined
+        # frames and frames arising from the interpreter)
         nothing
     end
 end
@@ -290,7 +289,7 @@ end
 Returns whether the `frame` is from the provided `Module`
 """
 function from(frame::StackFrame, m::Module)
-    parentmodule(frame) == m
+    return parentmodule(frame) === m
 end
 
 end

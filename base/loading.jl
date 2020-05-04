@@ -1105,7 +1105,7 @@ function include_string(mapexpr::Function, mod::Module, code::AbstractString,
     catch exc
         # TODO: Now that stacktraces are more reliable we should remove
         # LoadError and expose the real error type directly.
-        rethrow(LoadError(String(loc.file), loc.line, exc))
+        rethrow(LoadError(filename, loc.line, exc))
     end
 end
 
